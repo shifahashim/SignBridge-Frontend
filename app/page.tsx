@@ -71,7 +71,7 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-bold">Capture</h3>
               <p className="text-center text-muted-foreground">
-                Your device's camera captures sign language gestures in real-time.
+                Your device camera captures sign language gestures in real-time.
               </p>
             </div>
             <div className="flex flex-col items-center space-y-2 rounded-lg border p-6 shadow-sm">

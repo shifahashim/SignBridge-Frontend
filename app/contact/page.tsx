@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MapPin, Mail, Phone, Send, Loader2 } from "lucide-react"
+import {  Mail, Send, Loader2 } from "lucide-react"
 
 export default function ContactPage() {
   const [name, setName] = useState("")
@@ -52,7 +52,7 @@ export default function ContactPage() {
         <Card>
           <CardHeader>
             <CardTitle>Send us a message</CardTitle>
-            <CardDescription>Fill out the form below and we'll get back to you as soon as possible.</CardDescription>
+            <CardDescription>Fill out the form below and we will get back to you as soon as possible.</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
@@ -126,7 +126,7 @@ export default function ContactPage() {
 
           {submitSuccess && (
             <div className="mx-6 mb-6 p-4 bg-green-50 text-green-800 rounded-md">
-              Thank you for your message! We'll get back to you soon.
+              Thank you for your message! We will get back to you soon.
             </div>
           )}
         </Card>

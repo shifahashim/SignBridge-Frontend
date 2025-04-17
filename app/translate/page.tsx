@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Loader2, Volume2, VolumeX } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { findMalayalamByEnglish, getAllGestureClasses, type MalayalamLetter } from "@/lib/malayalam-alphabet";
+import { findMalayalamByEnglish, type MalayalamLetter } from "@/lib/malayalam-alphabet";
 
 // API endpoint - make sure this matches your backend server
 const API_URL = "http://localhost:5000/predict";
@@ -26,9 +26,7 @@ export default function TranslatePage() {
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("user");
-  const [allGestures, setAllGestures] = useState<string[]>([]);
-  const [boxDimensions, setBoxDimensions] = useState({ 
+  const [boxDimensions, setBoxDimensions] = useState({
     width: 400,  // Increased from 300
     height: 350, // Increased from 300
     left: 0,
@@ -36,18 +34,14 @@ export default function TranslatePage() {
   });
 
   useEffect(() => {
-    const savedCameraFacing = localStorage.getItem("cameraFacing");
-    if (savedCameraFacing === "user" || savedCameraFacing === "environment") {
-      setCameraFacing(savedCameraFacing);
-    }
-    setAllGestures(getAllGestureClasses());
-
     // Create a hidden canvas element for capturing frames
-    const canvas = document.createElement("canvas");
-    canvasRef.current = canvas;
+    canvasRef.current = document.createElement("canvas");
 
     // Test API connectivity on component mount
-    testApiConnection();
+    testApiConnection().catch(error => {
+      console.error("API connection test failed:", error);
+      setApiError("Failed to test API connection");
+    });
 
     // Initialize speech synthesis voices
     const synth = window.speechSynthesis;
@@ -83,10 +77,10 @@ export default function TranslatePage() {
       const updateBoxPosition = () => {
         const videoContainer = videoContainerRef.current;
         if (!videoContainer) return;
-        
+
         const containerWidth = videoContainer.offsetWidth;
         const containerHeight = videoContainer.offsetHeight;
-        
+
         // Center the box within the video container
         setBoxDimensions(prev => ({
           ...prev,
@@ -94,11 +88,11 @@ export default function TranslatePage() {
           top: (containerHeight - prev.height) / 2
         }));
       };
-      
+
       updateBoxPosition();
       // Also update on resize
       window.addEventListener('resize', updateBoxPosition);
-      
+
       return () => window.removeEventListener('resize', updateBoxPosition);
     }
   }, [isRecording]);
@@ -114,8 +108,8 @@ export default function TranslatePage() {
         console.log("Backend API is reachable!");
         setApiError(null);
       } else {
-        setApiError("Backend health check failed. API may be down.");
         console.error("Backend health check failed");
+        setApiError("Backend health check failed. API may be down.");
       }
     } catch (error) {
       console.error("Cannot reach backend:", error);
@@ -160,25 +154,25 @@ export default function TranslatePage() {
 
   const captureFrame = (): string | null => {
     if (!videoRef.current || !canvasRef.current || !videoContainerRef.current) return null;
-  
+
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const videoContainer = videoContainerRef.current;
-  
+
     // Get dimensions
     const videoWidth = video.videoWidth;
     const videoHeight = video.videoHeight;
     const containerWidth = videoContainer.offsetWidth;
     const containerHeight = videoContainer.offsetHeight;
-    
+
     // Calculate the video display dimensions accounting for object-cover
     let displayWidth, displayHeight, offsetX = 0, offsetY = 0;
-    
+
     // Video aspect ratio
     const videoAspect = videoWidth / videoHeight;
     // Container aspect ratio
     const containerAspect = containerWidth / containerHeight;
-    
+
     if (videoAspect > containerAspect) {
       // Video is wider than container - height matches container, width is cropped
       displayHeight = containerHeight;
@@ -190,35 +184,35 @@ export default function TranslatePage() {
       displayHeight = containerWidth / videoAspect;
       offsetY = (containerHeight - displayHeight) / 2;
     }
-    
+
     // Calculate scaling factors between actual video and displayed video
     const scaleX = videoWidth / displayWidth;
     const scaleY = videoHeight / displayHeight;
-    
+
     // Box position relative to the displayed video
     const boxLeft = (containerWidth - boxDimensions.width) / 2 - offsetX;
     const boxTop = (containerHeight - boxDimensions.height) / 2 - offsetY;
-    
+
     // Calculate the crop region in the original video coordinates
     const cropX = Math.max(0, boxLeft) * scaleX;
     const cropY = Math.max(0, boxTop) * scaleY;
     const cropWidth = Math.min(boxDimensions.width, displayWidth - Math.max(0, boxLeft)) * scaleX;
     const cropHeight = Math.min(boxDimensions.height, displayHeight - Math.max(0, boxTop)) * scaleY;
-    
+
     // Set canvas size to match the crop area
     canvas.width = cropWidth;
     canvas.height = cropHeight;
-  
+
     // Draw only the cropped region to the canvas
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
-  
+
     ctx.drawImage(
       video,
       cropX, cropY, cropWidth, cropHeight,  // Source rectangle (crop area)
       0, 0, cropWidth, cropHeight           // Destination rectangle (whole canvas)
     );
-  
+
     // Convert canvas to base64 image data
     return canvas.toDataURL("image/jpeg", 0.85);
   };
@@ -226,6 +220,7 @@ export default function TranslatePage() {
   const startGestureRecognition = () => {
     intervalRef.current = setInterval(async () => {
       try {
+        setIsProcessing(true);
         const imageData = captureFrame();
 
         if (!imageData) {
@@ -242,7 +237,8 @@ export default function TranslatePage() {
         if (!response.ok) {
           const errorText = await response.text();
           console.error("API request failed:", errorText);
-          throw new Error(`API request failed: ${response.status} ${errorText}`);
+          setApiError(`API request failed: ${response.status} ${errorText}`);
+          return;
         }
 
         const data = await response.json();
@@ -342,7 +338,7 @@ export default function TranslatePage() {
               <>
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                 {isRecording && (
-                  <div 
+                  <div
                     className="absolute pointer-events-none border-4 border-green-500"
                     style={{
                       width: `${boxDimensions.width}px`,

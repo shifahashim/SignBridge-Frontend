@@ -29,7 +29,7 @@ export default function AboutPage() {
             technology can:
           </p>
           <ul className="list-disc list-inside space-y-2 ml-4">
-            <li>Capture hand gestures through your device's camera</li>
+            <li>Capture hand gestures through your device camera</li>
             <li>Process and recognize signs with medium accuracy</li>
             <li>Translate signs into text and speech </li>
           </ul>
